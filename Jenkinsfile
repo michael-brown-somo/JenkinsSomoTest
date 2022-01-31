@@ -3,7 +3,7 @@ pipeline {
   stages {
     stage('Login') {
       steps {
-        bat 'sfdx auth:jwt:grant --instanceurl ${SF_INSTANCE_URL} --clientid ${SF_CONSUMER_KEY} --username ${SF_USERNAME} --jwtkeyfile ${server_key_file} --setdefaultdevhubusername --setalias main'
+        bat(script: 'sfdx auth:jwt:grant --instanceurl https://mindful-panda-s6hnbj-dev-ed.my.salesforce.com --clientid 3MVG9riCAn8HHkYXmQO2qmGWgar7bsQHV.2PradWPB2pVTH77tLDP2datbR3zmnjGi5AnXfcXN13eXlUb.bGt --username lgranadoscuello@mindful-panda-s6hnbj.com --jwtkeyfile **** --setdefaultdevhubusername --setalias main', returnStatus: true)
         powershell(script: 'sfdx force:org:display -u ${SF_USERNAME}', returnStatus: true)
       }
     }
