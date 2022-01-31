@@ -1,0 +1,109 @@
+#!groovy
+
+import groovy.json.JsonSlurperClassic
+
+node {
+
+    def SF_CONSUMER_KEY=env.CONNECTED_APP_CONSUMER_KEY_DH
+    def SF_USERNAME=env.HUB_ORG_DH
+    def SERVER_KEY_CREDENTALS_ID=env.JWT_CRED_ID_DH
+    def PACKAGE_NAME='0Ho1U000000CaUzSAK'
+    def DEPLOYDIR='src'
+    def TEST_LEVEL='RunLocalTests'
+    def PACKAGE_VERSION
+    def SF_INSTANCE_URL = env.SFDC_HOST_DH ?: "https://login.salesforce.com"
+
+    //def toolbelt = tool 'toolbelt'
+
+
+    // -------------------------------------------------------------------------
+    // Check out code from source control.
+    // -------------------------------------------------------------------------
+
+    stage('checkout source') {
+        checkout scm
+    }
+
+
+
+    // -------------------------------------------------------------------------
+    // Run all the enclosed stages with access to the Salesforce
+    // JWT key credentials.
+    // -------------------------------------------------------------------------
+    
+    withEnv(["HOME=${env.WORKSPACE}"]) {
+        
+        withCredentials([file(credentialsId: SERVER_KEY_CREDENTALS_ID, variable: 'server_key_file')]) {
+
+
+            // -------------------------------------------------------------------------
+            // Log In to org with JWT key and give it an alias.
+            // -------------------------------------------------------------------------
+
+            stage('Login to Org') {
+                rc = command "sfdx auth:jwt:grant --instanceurl ${SF_INSTANCE_URL} --clientid ${SF_CONSUMER_KEY} --username ${SF_USERNAME} --jwtkeyfile ${server_key_file} --setdefaultdevhubusername --setalias main"
+                if (rc != 0) {
+                    error 'Salesforce Org Login Failed.'
+                }
+            }
+
+            /*/ -------------------------------------------------------------------------
+            // Display Org Info
+            // -------------------------------------------------------------------------
+
+            stage('Display Info') {
+                rc = command "sfdx force:org:display -u ${SF_USERNAME}"
+                if (rc != 0) {
+                    error 'Display Info Failed'
+                }
+            }*/
+            
+            
+            // -------------------------------------------------------------------------
+            // Test Package Creator
+            // -------------------------------------------------------------------------
+
+            stage('Creating Test Package') {
+                rc = command "sfdx sgd:source:delta --to a0eac03 --from ed41ddc --output ."
+                if (rc != 0) {
+                    error 'Creating Test Package Failed'
+                }
+
+            }
+
+            // -------------------------------------------------------------------------
+            // Displaying the new Package
+            // -------------------------------------------------------------------------
+
+            stage('Display new Package') {
+                rc = command "type package\\package.xml" //If Unix cat
+                if (rc != 0) {
+                    error 'Failed'
+                }
+
+            }
+
+            
+            // -------------------------------------------------------------------------
+            // Deploy Metadata
+            // -------------------------------------------------------------------------
+
+            stage('Deploy Changed Metadata') {
+                rc = command "sfdx force:source:deploy -c -x package\\package.xml -u ${SF_USERNAME}"
+                if (rc != 0) {
+                error 'Salesforce Deploy Failed'
+                }
+            }
+
+
+        }
+    }
+}
+
+def command(script) {
+    if (isUnix()) {
+        return sh(returnStatus: true, script: script);
+    } else {
+        return bat(returnStatus: true, script: script);
+    }
+}
